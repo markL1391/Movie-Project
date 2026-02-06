@@ -1,6 +1,6 @@
 import random
 import statistics
-import movie_storage_sql as storage
+from movie_storage import movie_storage_sql as storage
 import requests
 import os
 from dotenv import load_dotenv
