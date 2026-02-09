@@ -546,14 +546,15 @@ def build_movie_grid_html(movies: dict) -> str:
         note = (data.get("note") or "").strip()
         note_attr = note.replace('"', "&quot;")
 
+        poster_alt = title.replace('"', "&quot;")
         item_html = f"""
         <li>
-            <div class="movie">
-                <img class="movie-poster" src="{poster_url}" alt="{title} title="{note_attr}">
-                <div class="movie-title">{title}</div>
-                <div class="movie-year">{year}</div>
-                <div class="movie-rating">{rating}</div>
-            </div>
+          <div class="movie">
+            <img class="movie-poster" src="{poster_url}" alt="{poster_alt}" title="{note_attr}">
+            <div class="movie-title">{title}</div>
+            <div class="movie-year">{year}</div>
+            <div class="movie-rating">{rating}</div>
+          </div>
         </li>
         """
         items.append(item_html.strip())
@@ -580,6 +581,8 @@ def select_user_menu():
         print("0. Exit")
 
         choice = input(f"\nEnter choice (0-{create_option}): ").strip()
+        if choice == "0":
+            return None, None
 
         # Create new user.
         if choice == str(create_option):
