@@ -19,6 +19,7 @@ def _init_db():
     with engine.connect() as connection:
         connection.execute(text("PRAGMA foreign_keys = ON;"))
 
+        # Users table.
         connection.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +27,7 @@ def _init_db():
             )
         """))
 
+        # Movies table.
         connection.execute(text("""
                     CREATE TABLE IF NOT EXISTS movies (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,11 +36,18 @@ def _init_db():
                         year INTEGER NOT NULL,
                         rating REAL NOT NULL,
                         poster_url TEXT,
+                        note TEXT,
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                         UNIQUE(user_id, title)
                     )
                 """))
         connection.commit()
+
+        cols = connection.execute(text("PRAGMA table_info(movies)")).fetchall()
+        col_names = {c[1] for c in cols}
+        if "note" not in col_names:
+            connection.execute(text("ALTER TABLE movies ADD COLUMN note TEXT"))
+            connection.commit()
 
 _init_db()
 
@@ -91,10 +100,9 @@ def list_movies(user_id: int):
     Retrieve all movies from the database for a specific user.
     """
     with engine.connect() as connection:
-
         result = connection.execute(
             text("""
-                SELECT title, year, rating, poster_url
+                SELECT title, year, rating, poster_url, note
                 FROM movies
                 WHERE user_id = :user_id
                 ORDER BY title
@@ -105,18 +113,22 @@ def list_movies(user_id: int):
         rows = result.fetchall()
 
     return {
-        row[0]: {"year": row[1], "rating": row[2], "poster_url": row[3]}
+        row[0]: {"year": row[1], "rating": row[2], "poster_url": row[3], "note": row[4]}
         for row in rows
     }
 
-def add_movie(user_id: int, title: str, year: int, rating: float, poster_url: str | None = None):
+def add_movie(
+    user_id: int, title: str, year: int,
+    rating: float, poster_url: str | None = None,
+    note: str | None = None
+    )-> bool:
     """Add a new movie to the database for a specific user."""
     with engine.connect() as connection:
         try:
             connection.execute(
                 text("""
-                INSERT INTO movies (user_id, title, year, rating, poster_url)
-                VALUES (:user_id,:title, :year, :rating, :poster_url)
+                INSERT INTO movies (user_id, title, year, rating, poster_url, note)
+                VALUES (:user_id,:title, :year, :rating, :poster_url, :note)
                 """),
         {
                     "user_id": user_id,
@@ -124,6 +136,7 @@ def add_movie(user_id: int, title: str, year: int, rating: float, poster_url: st
                     "year": year,
                     "rating": rating,
                     "poster_url": poster_url,
+                    "note": note,
                 }
             )
             connection.commit()
@@ -145,18 +158,34 @@ def delete_movie(user_id: int, title: str) -> bool:
         connection.commit()
         return result.rowcount > 0
 
-def update_movie(user_id: int, title: str, rating: float) -> bool:
+def update_movie(user_id: int, title: str, rating: float | None = None, note: str | None = None) -> bool:
     """
-    Update a movie's rating in the database for a specific user.
+    Update a movie's rating and /or note in the database (per user).
     """
+    if rating is None and note is None:
+        return False
+
+    fields = []
+    params = {"user_id": user_id, "title": title}
+
+    if rating is not None:
+        fields.append("rating = :rating")
+        params["rating"] = rating
+
+    if note is not None:
+        fields.append("note = :note")
+        params["note"] = note
+
+    set_clause = ", ".join(fields)
+
     with engine.connect() as connection:
         result = connection.execute(
-            text("""
+            text(f"""
                 UPDATE movies 
-                SET rating = :rating 
+                SET {set_clause}
                 WHERE user_id = :user_id AND title = :title
             """),
-{"user_id": user_id, "title": title, "rating": rating},
+            params,
         )
         connection.commit()
         return result.rowcount > 0

@@ -289,11 +289,11 @@ def delete_movies(user_id: int):
     else:
         print(f"\n⚠️ Movie '{BOLD}{key}{RESET}' could not be deleted.")
 
-def update_movies(user_id: int):
+def update_movies(active_user_id: int):
     """
     Updates the rating of an existing movie. Year stays unchanged.
     """
-    movies = storage.list_movies(user_id)
+    movies = storage.list_movies(active_user_id)
 
     title_input = prompt_non_empty(
         "Enter the movie you want to update: ",
@@ -312,11 +312,26 @@ def update_movies(user_id: int):
           f"is {BOLD}{current_rating}{RESET}"
     )
 
-    updated_rating = prompt_float_in_range(
-        "Enter the new rating (0-10): ", 1, 10
-    )
+    print("Leave input empty to keep current value.")
 
-    success = storage.update_movie(user_id, key, updated_rating)
+    new_rating = prompt_optional_float("Enter the new rating (0-10): ")
+    if new_rating is None:
+        updated_rating = current_rating
+    else:
+        if not (0 <= new_rating <= 10):
+            print("⚠️ Rating must be between 0 and 10.")
+            return
+        updated_rating = new_rating
+
+    new_note = input("New note (leave empty to keep current): ").strip()
+    if new_note == "":
+        new_note = movies[key].get("note")  # keep existing
+
+    success = storage.update_movie(
+        active_user_id,
+        key,
+        rating=updated_rating,
+        note=new_note)
 
     if success:
         print("\n ✅ Updated")
@@ -479,6 +494,7 @@ def filter_movies(user_id: int):
     for title, year, rating in results:
         print(f"{BOLD}{title}{RESET} ({year}): {BOLD_GREEN}{rating}{RESET} ⭐")
 
+
 def generate_website(user_id: int, user_name: str):
     """
     Generates the website from index_template.html and writes _static/index.html.
@@ -527,10 +543,13 @@ def build_movie_grid_html(movies: dict) -> str:
         rating = data.get("rating", "")
         poster_url = data.get("poster_url") or ""
 
+        note = (data.get("note") or "").strip()
+        note_attr = note.replace('"', "&quot;")
+
         item_html = f"""
         <li>
             <div class="movie">
-                <img class="movie-poster" src="{poster_url}" alt="{title}">
+                <img class="movie-poster" src="{poster_url}" alt="{title} title="{note_attr}">
                 <div class="movie-title">{title}</div>
                 <div class="movie-year">{year}</div>
                 <div class="movie-rating">{rating}</div>
