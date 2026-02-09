@@ -47,11 +47,23 @@ body {
 .movie-rating {
   font-size: 0.8em;
   text-align: center;
-  color: #333;
+  color: #444;
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.movie-rating::after {
+  content: " ★";
+  color: #f5c518;
 }
 
 .movie-poster {
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
     width: 128px;
     height: 193px;
+}
+
+.movie-poster:hover {
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
