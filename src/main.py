@@ -1,13 +1,23 @@
 import random
 import statistics
-from movie_storage import movie_storage_sql as storage
+from src.movie_storage import movie_storage_sql as storage
 import requests
 import os
 from dotenv import load_dotenv
+from pathlib import Path
+
+
 load_dotenv()
 
-
 OMDB_URL = "https://www.omdbapi.com/"
+
+
+# src/
+SRC_DIR = Path(__file__).resolve().parent
+# Project root
+PROJECT_DIR = SRC_DIR.parent
+STATIC_DIR = PROJECT_DIR / "static"
+
 
 # === COLORS (ANSI) ====
 BOLD = "\033[1m"
@@ -15,7 +25,6 @@ BOLD_RED = "\033[1;31m"
 BOLD_YELLOW = "\033[1;33m"
 BOLD_GREEN = "\033[1;32m"
 RESET = "\033[0m"
-
 
 
 def fetch_movie_from_omdb(title):
@@ -44,7 +53,7 @@ def fetch_movie_from_omdb(title):
         return None
 
     if data.get("Response") == "False":
-        print(f"⚠️ Movie not found: {data.get('Error', 'Unknown error')}")
+        print(f"⚠️ Movie not found in OMDb: {data.get('Error', 'Unknown error')}")
         return None
 
     api_title = data.get("Title", "").strip()
@@ -69,6 +78,9 @@ def fetch_movie_from_omdb(title):
 
 # === Helper functions ====
 def prompt_non_empty(prompt, error_msg="⚠️ Input cannot be empty. Please try again."):
+    """
+    Prompt user until a non-empty string is entered.
+    """
     while True:
         value = input(prompt).strip()
         if value == "":
@@ -78,6 +90,9 @@ def prompt_non_empty(prompt, error_msg="⚠️ Input cannot be empty. Please try
 
 
 def prompt_float(prompt, error_msg="⚠️ Invalid input. Rating must be a number."):
+    """
+    Prompt user until a valid float is entered.
+    """
     while True:
         value = input(prompt).strip()
         try:
@@ -88,6 +103,9 @@ def prompt_float(prompt, error_msg="⚠️ Invalid input. Rating must be a numbe
 
 
 def prompt_float_in_range(prompt, min_value, max_value):
+    """
+    Prompt user until a float within the given range is entered.
+    """
     while True:
         value = prompt_float(prompt)
         if value < min_value or value > max_value:
@@ -97,6 +115,9 @@ def prompt_float_in_range(prompt, min_value, max_value):
 
 
 def prompt_int_positive(prompt):
+    """
+    Prompt user for a positive integer.
+    """
     while True:
         value = input(prompt).strip()
         try:
@@ -113,6 +134,9 @@ def prompt_int_positive(prompt):
 
 
 def prompt_optional_float(prompt, error_msg="⚠️ Invalid input. Please enter a number."):
+    """
+    Prompt user for a float; return None if input is blank.
+    """
     value = input(prompt).strip()
     if value == "":
         return None
@@ -124,6 +148,9 @@ def prompt_optional_float(prompt, error_msg="⚠️ Invalid input. Please enter 
 
 
 def prompt_optional_int(prompt, error_msg="⚠️ Invalid input. Please enter an integer."):
+    """
+    Prompt user for an int; return None if input is blank.
+    """
     value = input(prompt).strip()
     if value == "":
         return None
@@ -144,6 +171,13 @@ def find_movie_key_case_insensitive(movies, user_title):
         if title.lower() == user_title:
             return title
     return None
+
+
+def pause():
+    """
+    Waiting for user input so the menu does not immediately refresh.
+    """
+    input("\nPress Enter to continue ...")
 
 
 def main_menu():
@@ -446,7 +480,15 @@ def generate_website():
     """
     Generates the website from index_template.html and writes _static/index.html.
     """
+
+    template_path = STATIC_DIR / "index_template.html"
+    output_path = STATIC_DIR / "index.html"
+
     movies = storage.list_movies()
+
+    if not movies:
+        print("No movies in the database yet.")
+        return
 
     name = input("Enter your name (leave empty for default title): ").strip()
     if name:
@@ -456,13 +498,13 @@ def generate_website():
 
     movie_grid = build_movie_grid_html(movies)
 
-    with open("static/index_template.html", "r") as f:
+    with open(template_path, "r") as f:
         template = f.read()
 
     html = template.replace("__TEMPLATE_TITLE__", title)
     html = html.replace("__TEMPLATE_MOVIE_GRID__", movie_grid)
 
-    with open("index.html", "w") as f:
+    with open(output_path, "w") as f:
         f.write(html)
 
     print("Website was generated successfully. 🎉")
@@ -527,8 +569,10 @@ def main():
             label, func = action
             print(f"\nYou've chosen: {label}\n")
             func()
+            pause()
         else:
             print("\nInvalid choice. Please try again.\n")
+            pause()
 
 if __name__ == "__main__":
     main()

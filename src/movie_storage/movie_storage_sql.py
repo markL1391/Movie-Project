@@ -1,12 +1,13 @@
-from sqlalchemy import create_engine, text
 from pathlib import Path
+from sqlalchemy import create_engine, text
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "movies.db"
 
-# Define the database URL
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)
+
+DB_PATH = DATA_DIR / "movies.db"
 DB_URL = f"sqlite:///{DB_PATH}"
-print("DB path:", DB_PATH)
 
 # Create the engine
 engine = create_engine(DB_URL, echo=False)
@@ -23,12 +24,6 @@ with engine.connect() as connection:
         )
     """))
     connection.commit()
-
-    try:
-        connection.execute(text("ALTER TABLE movies ADD COLUMN poster_url TEXT"))
-        connection.commit()
-    except Exception:
-        pass
 
 def list_movies():
     """Retrieve all movies from the database."""
