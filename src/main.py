@@ -1,5 +1,6 @@
 import random
 import statistics
+
 from src.movie_storage import movie_storage_sql as storage
 import requests
 import os
@@ -180,14 +181,14 @@ def pause():
     input("\nPress Enter to continue ...")
 
 
-def main_menu():
+def main_menu(active_user_name: str):
     """
     Displays the main menu and returns the user's choice.
     """
     print("")
-    print("==============================================")
-    print("🍿 🍿 🍿 🍿  My Movies Database  🍿 🍿 🍿 🍿")
-    print("==============================================")
+    print("=====================================================")
+    print(f"🍿 🍿 🍿 🍿 {active_user_name}'s Movies Database  🍿 🍿 🍿 🍿")
+    print("=====================================================")
     print("")
     print("Menu:\n")
     print("0. Exit")
@@ -201,18 +202,19 @@ def main_menu():
     print("8. Movies sorted by rating")
     print("9. Movies sorted by year")
     print("10. Filter movies")
-    print("11. Generate website\n")
-    return input("Enter choice (0-11): ").strip()
+    print("11. Generate website")
+    print("12. Switch user\n")
+    return input("Enter choice (0-12): ").strip()
 
 
-def list_movies():
+def list_movies(user_id: int, user_name: str):
     """
     Retrieve and display all movies from the database.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     if not movies:
-        print("No movies in the database yet.")
+        print(f"📢 {user_name}, your movie collection is empty. Add some movies!")
         return
 
     print(f"{len(movies)} movies in total\n")
@@ -222,11 +224,11 @@ def list_movies():
         print(f"{BOLD}{title}{RESET} ({year}): {BOLD_GREEN}{rating}{RESET}")
 
 
-def add_movies():
+def add_movies(user_id: int):
     """
     Add a movie to the database (fetching data from OMDb by title).
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     # Title input (no empty string).
     title_input = prompt_non_empty(
@@ -245,13 +247,14 @@ def add_movies():
         return
 
     # Check again using the real API title.
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
     existing_key = find_movie_key_case_insensitive(movies, movie["title"])
     if existing_key is not None:
         print(f"⚠️ Movie '{existing_key}' already exists.")
         return
 
     storage.add_movie(
+        user_id,
         movie["title"],
         movie["year"],
         movie["rating"],
@@ -263,11 +266,11 @@ def add_movies():
         f"with rating {BOLD_GREEN}{movie['rating']}{RESET} was added! 🎉")
 
 
-def delete_movies():
+def delete_movies(user_id: int):
     """
     Deletes a movie from the database.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     title_input = prompt_non_empty(
         "Enter the movie title you want to delete: ",
@@ -279,18 +282,18 @@ def delete_movies():
         print(f"\n⚠️⚠️⚠️ Error! The movie '{BOLD}{title_input}{RESET}' was not found in the database.")
         return
 
-    success = storage.delete_movie(key)
+    success = storage.delete_movie(user_id, key)
 
     if success:
         print(f"\nMovie '{BOLD}{key}{RESET}' was deleted successfully! 🗑️")
     else:
         print(f"\n⚠️ Movie '{BOLD}{key}{RESET}' could not be deleted.")
 
-def update_movies():
+def update_movies(user_id: int):
     """
     Updates the rating of an existing movie. Year stays unchanged.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     title_input = prompt_non_empty(
         "Enter the movie you want to update: ",
@@ -310,10 +313,10 @@ def update_movies():
     )
 
     updated_rating = prompt_float_in_range(
-        "Enter the new rating (1-10): ", 1, 10
+        "Enter the new rating (0-10): ", 1, 10
     )
 
-    success = storage.update_movie(key, updated_rating)
+    success = storage.update_movie(user_id, key, updated_rating)
 
     if success:
         print("\n ✅ Updated")
@@ -322,11 +325,11 @@ def update_movies():
         print(f"\n⚠️ Movie '{BOLD}{key}{RESET}' could not be updated.")
 
 
-def get_stats_movies():
+def get_stats_movies(user_id: int):
     """
     Shows statistics about the movie database.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
     if not movies:
         print(f"📊 {BOLD}Movies statistics:{RESET}")
         print("No movies in the database yet.")
@@ -357,10 +360,10 @@ def get_stats_movies():
         print(f" '{BOLD_RED}{title}{RESET}' with rating {BOLD_RED}{worst_rating}{RESET}")
 
 
-def get_random_movies():
+def get_random_movies(user_id: int):
     """ Prints a random movie suggestion.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     if not movies:
         print("No movies in the database yet.")
@@ -373,11 +376,11 @@ def get_random_movies():
     print(f"→ {BOLD_YELLOW}{title}{RESET} ({year}) with a rating of {BOLD_YELLOW}{rating}{RESET} ⭐")
 
 
-def search_movies():
+def search_movies(user_id: int):
     """
     Searches for movies by partial title (case-insensitive).
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     search_term = prompt_non_empty(
         "Enter part of movie name: ",
@@ -398,11 +401,11 @@ def search_movies():
         print(f"→ {BOLD}{title}{RESET} ({year}) (rating: {BOLD_GREEN}{rating}{RESET} ⭐)")
 
 
-def get_sorted_movies():
+def get_sorted_movies(user_id: int):
     """
     Prints all movies sorted by rating (highest to lowest).
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
     sorted_movies = sorted(movies.items(), key=lambda item: item[1]["rating"], reverse=True)
 
     print(f"📽️ {BOLD}Movies sorted by rating:{RESET}\n")
@@ -410,11 +413,11 @@ def get_sorted_movies():
         print(f"{index}. Movie: {BOLD_YELLOW}{title}{RESET} ({data['year']}) - Rating: {BOLD_YELLOW}{data['rating']}{RESET} ⭐")
 
 
-def get_sorted_movies_by_year():
+def get_sorted_movies_by_year(user_id: int):
     """
     Prints all movies sorted by year (oldest to newest).
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
     sorted_movies = sorted(movies.items(), key=lambda item: item[1]["year"])
 
     print(f"📆️ {BOLD}Movies sorted by year:{RESET}\n")
@@ -422,12 +425,12 @@ def get_sorted_movies_by_year():
         print(f"{index}. Movie: {BOLD_YELLOW}{title}{RESET} ({data['year']}) - Rating: {BOLD_YELLOW}{data['rating']}{RESET} ⭐")
 
 
-def filter_movies():
+def filter_movies(user_id: int):
     """
     Filters movies by optional minimum rating, start year and end year.
     Empty input means no filter for that criterion.
     """
-    movies = storage.list_movies()
+    movies = storage.list_movies(user_id)
 
     if not movies:
         print("No movies in the database yet.")
@@ -476,15 +479,19 @@ def filter_movies():
     for title, year, rating in results:
         print(f"{BOLD}{title}{RESET} ({year}): {BOLD_GREEN}{rating}{RESET} ⭐")
 
-def generate_website():
+def generate_website(user_id: int, user_name: str):
     """
     Generates the website from index_template.html and writes _static/index.html.
     """
-
     template_path = STATIC_DIR / "index_template.html"
-    output_path = STATIC_DIR / "index.html"
 
-    movies = storage.list_movies()
+    safe_name = ("".join
+                (c for c in user_name if c.isalnum() or c in (" ", "_", "-")
+                ).strip().replace(" ", "_"))
+
+    output_path = STATIC_DIR / f"{safe_name}.html"
+
+    movies = storage.list_movies(user_id)
 
     if not movies:
         print("No movies in the database yet.")
@@ -498,7 +505,7 @@ def generate_website():
 
     movie_grid = build_movie_grid_html(movies)
 
-    with open(template_path, "r") as f:
+    with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
 
     html = template.replace("__TEMPLATE_TITLE__", title)
@@ -507,7 +514,7 @@ def generate_website():
     with open(output_path, "w") as f:
         f.write(html)
 
-    print("Website was generated successfully. 🎉")
+    print(f"Website was generated successfully: {output_path} 🎉")
 
 def build_movie_grid_html(movies: dict) -> str:
     """
@@ -534,35 +541,85 @@ def build_movie_grid_html(movies: dict) -> str:
     return "\n".join(items)
 
 
+def select_user_menu():
+    """
+    Show user selection menu.
+    Returns (user_id, user_name).
+    """
+    while True:
+        users = storage.list_users()
 
+        print("\nWelcome to the Movie App! 🎬\n")
+        print("Select a user:")
+
+        if users:
+            for i, (_, name) in enumerate(users, start=1):
+                print(f"{i}. {name}")
+
+        create_option = len(users) + 1
+        print(f"{create_option}. Create new user")
+        print("0. Exit")
+
+        choice = input(f"\nEnter choice (0-{create_option}): ").strip()
+
+        # Create new user.
+        if choice == str(create_option):
+            new_name = prompt_non_empty("Enter new user name: ")
+            user_id = storage.get_or_create_user(new_name)
+            print(f"\n✅ Logged in as {new_name}.\n")
+            return user_id, new_name
+
+        # Pick existing username.
+        if choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(users):
+                user_id, name = users[idx - 1]
+                print(f"\n✅ Welcome back, {name}! 🎬\n")
+                return user_id, name
+
+        print("\n⚠️ Invalid choice. Please try again.")
 
 def main():
     """
     Runs the Movie Database CLI application.
     """
-
-    actions = {
-        "1": ("List movies",list_movies),
-        "2": ("Add movie", add_movies),
-        "3": ("Delete movie", delete_movies),
-        "4": ("Update movie", update_movies),
-        "5": ("Stats", get_stats_movies),
-        "6": ("Random movie", get_random_movies),
-        "7": ("Search movie", search_movies),
-        "8": ("Movies sorted by rating", get_sorted_movies),
-        "9": ("Movies sorted by year", get_sorted_movies_by_year),
-        "10": ("Filter movies", filter_movies),
-        "11": ("Generate website", generate_website),
-    }
+    user_id, user_name = select_user_menu()
+    if user_id is None:
+        print("\nExiting program... Goodbye!\n")
+        print("\n👋   👋   👋")
+        return
 
     # Main loop.
     while True:
-        choice = main_menu().strip()
+        actions = {
+            "1": ("List movies",  lambda: list_movies(user_id, user_name)),
+            "2": ("Add movie", lambda: add_movies(user_id)),
+            "3": ("Delete movie", lambda: delete_movies(user_id)),
+            "4": ("Update movie", lambda: update_movies(user_id)),
+            "5": ("Stats", lambda: get_stats_movies(user_id)),
+            "6": ("Random movie", lambda: get_random_movies(user_id)),
+            "7": ("Search movie", lambda: search_movies(user_id)),
+            "8": ("Movies sorted by rating", lambda: get_sorted_movies(user_id)),
+            "9": ("Movies sorted by year", lambda: get_sorted_movies_by_year(user_id)),
+            "10": ("Filter movies", lambda: filter_movies(user_id)),
+            "11": ("Generate website", lambda: generate_website(user_id, user_name)),
+            "12": ("Switch user", lambda: None)
+        }
+
+        choice = main_menu(user_name).strip()
 
         if choice == "0":
             print("\nExiting program... Goodbye!\n")
             print("\n👋   👋   👋")
             break
+
+        if choice == "12":
+            user_id, user_name = select_user_menu()
+            if user_id is None:
+                print("\nExiting program... Goodbye!\n")
+                print("\n👋   👋   👋")
+                break
+            continue
 
         action = actions.get(choice)
         if action:
